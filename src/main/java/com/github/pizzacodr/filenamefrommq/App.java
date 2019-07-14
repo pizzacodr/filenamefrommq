@@ -17,23 +17,22 @@ public class App {
 
 	private static ConnectionFactory factory;
 	private static GetResponse response;
-	private static ConfigFile cfg;
+	private static final ConfigFile CFG = ConfigFactory.create(ConfigFile.class, System.getProperties());
 	private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
 	
 
 	public static void main(String[] args) throws IOException, TimeoutException, InterruptedException {
 
-		cfg = ConfigFactory.create(ConfigFile.class, System.getProperties());
+		setupConnectionFactory();
 
-		setupConnectionFactory(cfg.hostname(), LOGGER);
+		try (Connection connection = factory.newConnection(); 
+				Channel channel = connection.createChannel()) {
 
-		try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
-
-			LOGGER.info("Queue Name: " + cfg.queueName());
+			LOGGER.info("Queue Name: " + CFG.queueName());
 
 			channel.basicQos(1); // maximum number of files the server will deliver before an ack.
 
-			response = channel.basicGet(cfg.queueName(), false);
+			response = channel.basicGet(CFG.queueName(), false);
 			
 			ifResponseNullWait(channel, "Queue empty during startup, waiting for ");
 
@@ -41,7 +40,7 @@ public class App {
 				byte[] body = response.getBody();
 				LOGGER.info(new String(body));
 				channel.basicAck(response.getEnvelope().getDeliveryTag(), false); // sends the ack
-				response = channel.basicGet(cfg.queueName(), false);
+				response = channel.basicGet(CFG.queueName(), false);
 				ifResponseNullWait(channel, "Queue empty during processing, waiting for ");
 			}
 		}
@@ -49,15 +48,15 @@ public class App {
 
 	private static void ifResponseNullWait(Channel channel, String loggerMsg) throws InterruptedException, IOException {
 		while (response == null) {
-			LOGGER.info(loggerMsg + cfg.waitTime() + " seconds");
-			TimeUnit.SECONDS.sleep(cfg.waitTime());
-			response = channel.basicGet(cfg.queueName(), false);
+			LOGGER.info(loggerMsg + CFG.waitTime() + " seconds");
+			TimeUnit.SECONDS.sleep(CFG.waitTime());
+			response = channel.basicGet(CFG.queueName(), false);
 		}
 	}
 
-	private static void setupConnectionFactory(String hostname, Logger logger) {
+	private static void setupConnectionFactory() {
 		factory = new ConnectionFactory();
-		factory.setHost(hostname);
-		logger.info("Hostname: " + hostname);
+		factory.setHost(CFG.hostname());
+		LOGGER.info("Hostname: " + CFG.hostname());
 	}
 }
