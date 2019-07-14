@@ -19,4 +19,7 @@ public interface ConfigFile extends Config {
 	
 	@DefaultValue("2")
 	int waitTime();
+	
+	@DefaultValue("A")
+	String watcherName();
 }
