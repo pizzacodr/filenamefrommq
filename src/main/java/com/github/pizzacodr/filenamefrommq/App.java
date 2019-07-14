@@ -1,73 +1,63 @@
 package com.github.pizzacodr.filenamefrommq;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.aeonbits.owner.ConfigFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
-import com.rabbitmq.client.DefaultConsumer;
-import com.rabbitmq.client.DeliverCallback;
-import com.rabbitmq.client.Delivery;
 import com.rabbitmq.client.GetResponse;
 
 public class App {
 
 	private static ConnectionFactory factory;
+	private static GetResponse response;
+	private static ConfigFile cfg;
+	private static final Logger LOGGER = LoggerFactory.getLogger(App.class);
+	
 
-	public static void main(String[] args) throws IOException, TimeoutException {
-		Logger logger = LoggerFactory.getLogger(App.class);
+	public static void main(String[] args) throws IOException, TimeoutException, InterruptedException {
 
-		String hostname = "localhost";
-		String queueName = "filename";
+		cfg = ConfigFactory.create(ConfigFile.class, System.getProperties());
 
-		setupConnectionFactory(hostname, logger);
+		setupConnectionFactory(cfg.hostname(), LOGGER);
 
 		try (Connection connection = factory.newConnection(); Channel channel = connection.createChannel()) {
 
-			//channel.queueDeclare(queueName, false, false, false, null);
-			logger.info("Queue Name: " + queueName);
+			LOGGER.info("Queue Name: " + cfg.queueName());
 
-			//channel.basicQos(1); // maximum number of files the server will deliver before an ack.
+			channel.basicQos(1); // maximum number of files the server will deliver before an ack.
 
-			//DefaultConsumer consumer = new DefaultConsumer(channel);
-			//channel.basicConsume(queueName, false); // no automatic ack
-			GetResponse response = channel.basicGet(queueName, false);
+			response = channel.basicGet(cfg.queueName(), false);
 			
-			logger.info(Integer.toString(response.getMessageCount()));
-			
-			while (response != null) {
-				logger.info(response.getBody().toString());
-				channel.basicAck(response.getEnvelope().getDeliveryTag(), false);
+			ifResponseNullWait(channel, "Queue empty during startup, waiting for ");
+
+			while (true) {
+				byte[] body = response.getBody();
+				LOGGER.info(new String(body));
+				channel.basicAck(response.getEnvelope().getDeliveryTag(), false); // sends the ack
+				response = channel.basicGet(cfg.queueName(), false);
+				ifResponseNullWait(channel, "Queue empty during processing, waiting for ");
 			}
-			
-			/*
-			 * logger.info("consumers: " + channel.consumerCount(queueName) + " Tag: " +
-			 * consumer.getConsumerTag());
-			 */
-			
-			
+		}
+	}
 
-			/*
-			 * DeliverCallback deliverCallback = (consumerTag, delivery) -> { String message
-			 * = new String(delivery.getBody(), "UTF-8");
-			 * 
-			 * logger.info(" [x] Received '" + message + "'");
-			 * 
-			 * logger.info(" [x] Done");
-			 * channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false); };
-			 * channel.basicConsume(queueName, false, deliverCallback, consumerTag -> {});
-			 */
+	private static void ifResponseNullWait(Channel channel, String loggerMsg) throws InterruptedException, IOException {
+		while (response == null) {
+			LOGGER.info(loggerMsg + cfg.waitTime() + " seconds");
+			TimeUnit.SECONDS.sleep(cfg.waitTime());
+			response = channel.basicGet(cfg.queueName(), false);
 		}
 	}
 
 	private static void setupConnectionFactory(String hostname, Logger logger) {
 		factory = new ConnectionFactory();
 		factory.setHost(hostname);
-
 		logger.info("Hostname: " + hostname);
 	}
 }
