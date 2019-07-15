@@ -34,14 +34,18 @@ public class App {
 
 			response = channel.basicGet(CFG.queueName(), false);
 			
-			ifResponseNullWait(channel, "The queue for watcher " + CFG.watcherName() +" is empty during startup, waiting for ");
+			ifResponseNullWait(channel, 
+					"The queue for watcher " + CFG.watcherName() +" is empty during startup, waiting for ");
 
 			while (true) {
 				byte[] body = response.getBody();
 				LOGGER.info("Watcher " + CFG.watcherName() + " processed message : " + new String(body));
 				channel.basicAck(response.getEnvelope().getDeliveryTag(), false); // sends the ack
 				response = channel.basicGet(CFG.queueName(), false);
-				ifResponseNullWait(channel, "Queue for watcher " + CFG.watcherName() + " is empty during processing, waiting for ");
+				TimeUnit.SECONDS.sleep(1);
+				
+				ifResponseNullWait(channel, 
+						"Queue for watcher " + CFG.watcherName() + " is empty during processing, waiting for ");
 			}
 		}
 	}
