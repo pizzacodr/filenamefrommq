@@ -11,6 +11,9 @@ public interface ConfigFile extends Config {
 	@DefaultValue("${user.home}/watchDir")
 	String watchDir();
 	
+	@DefaultValue("${user.home}/processedDir")
+	String processedDir();
+	
 	@DefaultValue("localhost")
 	String hostname();
 	

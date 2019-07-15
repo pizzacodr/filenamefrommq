@@ -1,6 +1,11 @@
 package com.github.pizzacodr.filenamefrommq;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -39,10 +44,17 @@ public class App {
 
 			while (true) {
 				byte[] body = response.getBody();
-				LOGGER.info("Watcher " + CFG.watcherName() + " processed message : " + new String(body));
+				String strBody = new String(body);
+				LOGGER.info("Watcher " + CFG.watcherName() + " processed message : " + strBody);
 				channel.basicAck(response.getEnvelope().getDeliveryTag(), false); // sends the ack
 				response = channel.basicGet(CFG.queueName(), false);
+				
 				TimeUnit.SECONDS.sleep(1);
+				
+				Path original = Paths.get(CFG.watchDir() + File.separator + strBody);
+				Path copy = Paths.get(CFG.processedDir()+ File.separator + strBody);
+				
+				Files.move(original, copy, StandardCopyOption.REPLACE_EXISTING);
 				
 				ifResponseNullWait(channel, 
 						"Queue for watcher " + CFG.watcherName() + " is empty during processing, waiting for ");
