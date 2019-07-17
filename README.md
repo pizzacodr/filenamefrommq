@@ -33,4 +33,4 @@ The command to run the binary with Java on Linux is `java -jar filenamefrommq-0.
 
 # Sample Shell Script for Running the Binary
 
-To easily run several versions of this code, the [runningProject.sh](./src/test/resources/runningProject.sh) batch script was created with the most common options.
+To easily run several versions of this code, the [runningProject.sh](./src/test/resources/runningProject.sh) bash script was created with the most common options.
